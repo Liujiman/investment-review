@@ -1,0 +1,2603 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "投资决策复盘两阶段契约 1.0",
+  "description": "按 A_input、A_output、B_input、B_output 分别验证；通过结构验证不等于通过语义和版本验证。",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/A_input"
+    },
+    {
+      "$ref": "#/$defs/A_output"
+    },
+    {
+      "$ref": "#/$defs/B_input"
+    },
+    {
+      "$ref": "#/$defs/B_output"
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "text": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "nonempty": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 1
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "datetime": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?[+-]\\d{2}:\\d{2}$"
+    },
+    "symbol": {
+      "type": "string",
+      "pattern": "^(?:DEMO001|[0-9]{6}\\.(?:SH|SZ|BJ))$"
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,14})(?:\\.[0-9]{1,6})?$"
+    },
+    "positive_decimal": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,14})(?:\\.[0-9]{1,6})?$",
+      "not": {
+        "pattern": "^0(?:\\.0{1,6})?$"
+      }
+    },
+    "first_available": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "date",
+            "at",
+            "precision",
+            "basis"
+          ],
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "at": {
+              "$ref": "#/$defs/datetime"
+            },
+            "precision": {
+              "const": "datetime"
+            },
+            "basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "date",
+            "at",
+            "precision",
+            "basis"
+          ],
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "at": {
+              "type": "null"
+            },
+            "precision": {
+              "const": "date"
+            },
+            "basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "date",
+            "at",
+            "precision",
+            "basis"
+          ],
+          "properties": {
+            "date": {
+              "type": "null"
+            },
+            "at": {
+              "type": "null"
+            },
+            "precision": {
+              "const": "unknown"
+            },
+            "basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "source_type",
+        "source_name",
+        "source_reference",
+        "source_fields",
+        "units",
+        "timezone",
+        "first_available",
+        "fetched_at",
+        "quality"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_type": {
+          "enum": [
+            "synthetic",
+            "user_provided",
+            "provider_api"
+          ]
+        },
+        "source_name": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "source_reference": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "source_fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
+          }
+        },
+        "units": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
+          }
+        },
+        "timezone": {
+          "const": "Asia/Shanghai"
+        },
+        "first_available": {
+          "$ref": "#/$defs/first_available"
+        },
+        "fetched_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "notes"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "synthetic",
+                "unverified",
+                "verified",
+                "missing",
+                "conflict"
+              ]
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "minItems": 0,
+              "maxItems": 20
+            }
+          }
+        }
+      }
+    },
+    "trade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "created_at",
+        "updated_at",
+        "evidence",
+        "trade_id",
+        "batch_id",
+        "source_row",
+        "symbol",
+        "name",
+        "trade_date",
+        "trade_at",
+        "time_precision",
+        "side",
+        "quantity",
+        "price",
+        "fee",
+        "same_day_order",
+        "order_confirmed"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "batch_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_row": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "trade_date": {
+          "$ref": "#/$defs/date"
+        },
+        "trade_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_precision": {
+          "enum": [
+            "datetime",
+            "date"
+          ]
+        },
+        "side": {
+          "enum": [
+            "BUY",
+            "SELL"
+          ]
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "price": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "fee": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "same_day_order": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order_confirmed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "trade_values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "evidence",
+        "trade_id",
+        "batch_id",
+        "source_row",
+        "symbol",
+        "name",
+        "trade_date",
+        "trade_at",
+        "time_precision",
+        "side",
+        "quantity",
+        "price",
+        "fee",
+        "same_day_order",
+        "order_confirmed"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "batch_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source_row": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "trade_date": {
+          "$ref": "#/$defs/date"
+        },
+        "trade_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_precision": {
+          "enum": [
+            "datetime",
+            "date"
+          ]
+        },
+        "side": {
+          "enum": [
+            "BUY",
+            "SELL"
+          ]
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "price": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "fee": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "same_day_order": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order_confirmed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "created_at",
+        "updated_at",
+        "evidence",
+        "reason_id",
+        "episode_id",
+        "trade_id",
+        "symbol",
+        "record_type",
+        "judgment",
+        "expected_evidence",
+        "invalidation_condition",
+        "source_excerpt",
+        "source_url",
+        "formed_date",
+        "formed_at",
+        "time_precision",
+        "historical_version_confirmed",
+        "has_time_conflict"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "reason_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "record_type": {
+          "enum": [
+            "contemporaneous",
+            "recollection"
+          ]
+        },
+        "judgment": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "expected_evidence": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "invalidation_condition": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source_excerpt": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2000,
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "formed_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "formed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_precision": {
+          "enum": [
+            "datetime",
+            "date",
+            "unknown"
+          ]
+        },
+        "historical_version_confirmed": {
+          "type": "boolean"
+        },
+        "has_time_conflict": {
+          "type": "boolean"
+        }
+      }
+    },
+    "reason_values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "evidence",
+        "reason_id",
+        "episode_id",
+        "trade_id",
+        "symbol",
+        "record_type",
+        "judgment",
+        "expected_evidence",
+        "invalidation_condition",
+        "source_excerpt",
+        "source_url",
+        "formed_date",
+        "formed_at",
+        "time_precision",
+        "historical_version_confirmed",
+        "has_time_conflict"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "reason_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "record_type": {
+          "enum": [
+            "contemporaneous",
+            "recollection"
+          ]
+        },
+        "judgment": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "expected_evidence": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "invalidation_condition": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source_excerpt": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2000,
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "formed_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "formed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_precision": {
+          "enum": [
+            "datetime",
+            "date",
+            "unknown"
+          ]
+        },
+        "historical_version_confirmed": {
+          "type": "boolean"
+        },
+        "has_time_conflict": {
+          "type": "boolean"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "created_at",
+        "updated_at",
+        "evidence",
+        "event_id",
+        "episode_id",
+        "symbol",
+        "title",
+        "excerpt",
+        "source_url",
+        "occurred_date",
+        "published_date",
+        "published_at",
+        "time_precision",
+        "historical_version_confirmed",
+        "has_time_conflict"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "excerpt": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2000,
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurred_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "published_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_precision": {
+          "enum": [
+            "datetime",
+            "date",
+            "unknown"
+          ]
+        },
+        "historical_version_confirmed": {
+          "type": "boolean"
+        },
+        "has_time_conflict": {
+          "type": "boolean"
+        }
+      }
+    },
+    "event_values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "evidence",
+        "event_id",
+        "episode_id",
+        "symbol",
+        "title",
+        "excerpt",
+        "source_url",
+        "occurred_date",
+        "published_date",
+        "published_at",
+        "time_precision",
+        "historical_version_confirmed",
+        "has_time_conflict"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "excerpt": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 2000,
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurred_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "published_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_precision": {
+          "enum": [
+            "datetime",
+            "date",
+            "unknown"
+          ]
+        },
+        "historical_version_confirmed": {
+          "type": "boolean"
+        },
+        "has_time_conflict": {
+          "type": "boolean"
+        }
+      }
+    },
+    "market_bar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "created_at",
+        "updated_at",
+        "evidence",
+        "bar_id",
+        "market_snapshot_id",
+        "symbol",
+        "trade_date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "turnover",
+        "currency",
+        "adjust",
+        "upstream_data_timestamp"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "bar_id": {
+          "$ref": "#/$defs/id"
+        },
+        "market_snapshot_id": {
+          "$ref": "#/$defs/id"
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "trade_date": {
+          "$ref": "#/$defs/date"
+        },
+        "open": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "high": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "low": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "close": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "volume": {
+          "$ref": "#/$defs/decimal"
+        },
+        "turnover": {
+          "$ref": "#/$defs/decimal"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "adjust": {
+          "const": "none"
+        },
+        "upstream_data_timestamp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "market_bar_values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_mode",
+        "evidence",
+        "bar_id",
+        "market_snapshot_id",
+        "symbol",
+        "trade_date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "turnover",
+        "currency",
+        "adjust",
+        "upstream_data_timestamp"
+      ],
+      "properties": {
+        "data_mode": {
+          "enum": [
+            "real",
+            "constructed"
+          ]
+        },
+        "is_constructed": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "$ref": "#/$defs/provenance"
+        },
+        "bar_id": {
+          "$ref": "#/$defs/id"
+        },
+        "market_snapshot_id": {
+          "$ref": "#/$defs/id"
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "trade_date": {
+          "$ref": "#/$defs/date"
+        },
+        "open": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "high": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "low": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "close": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "volume": {
+          "$ref": "#/$defs/decimal"
+        },
+        "turnover": {
+          "$ref": "#/$defs/decimal"
+        },
+        "currency": {
+          "const": "CNY"
+        },
+        "adjust": {
+          "const": "none"
+        },
+        "upstream_data_timestamp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/datetime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_id",
+        "value",
+        "unit",
+        "formula",
+        "input_trade_ids",
+        "dependency_evidence_ids",
+        "limitations",
+        "status"
+      ],
+      "properties": {
+        "metric_id": {
+          "enum": [
+            "buy_amount",
+            "sell_amount",
+            "gross_pnl",
+            "total_fees",
+            "net_pnl"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+                },
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "const": "元"
+        },
+        "formula": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "input_trade_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 1,
+          "maxItems": 5000
+        },
+        "dependency_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 1,
+          "maxItems": 5000
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "status": {
+          "enum": [
+            "known",
+            "unknown",
+            "provisional"
+          ]
+        }
+      }
+    },
+    "evidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "evidence_id",
+            "kind",
+            "record_id",
+            "episode_id",
+            "symbol",
+            "values",
+            "source_name",
+            "source_locator",
+            "source_excerpt",
+            "time_class",
+            "availability_basis",
+            "available_date",
+            "available_at",
+            "time_precision",
+            "fetched_at",
+            "is_constructed",
+            "excluded",
+            "limitations"
+          ],
+          "properties": {
+            "evidence_id": {
+              "$ref": "#/$defs/id"
+            },
+            "kind": {
+              "const": "trade"
+            },
+            "record_id": {
+              "$ref": "#/$defs/id"
+            },
+            "episode_id": {
+              "$ref": "#/$defs/id"
+            },
+            "symbol": {
+              "$ref": "#/$defs/symbol"
+            },
+            "values": {
+              "$ref": "#/$defs/trade_values"
+            },
+            "source_name": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_locator": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_excerpt": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "time_class": {
+              "enum": [
+                "prior",
+                "post",
+                "unknown"
+              ]
+            },
+            "availability_basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "available_date": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/date"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "available_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "time_precision": {
+              "enum": [
+                "datetime",
+                "date",
+                "unknown"
+              ]
+            },
+            "fetched_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_constructed": {
+              "type": "boolean"
+            },
+            "excluded": {
+              "type": "boolean"
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "minItems": 0,
+              "maxItems": 20
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "evidence_id",
+            "kind",
+            "record_id",
+            "episode_id",
+            "symbol",
+            "values",
+            "source_name",
+            "source_locator",
+            "source_excerpt",
+            "time_class",
+            "availability_basis",
+            "available_date",
+            "available_at",
+            "time_precision",
+            "fetched_at",
+            "is_constructed",
+            "excluded",
+            "limitations"
+          ],
+          "properties": {
+            "evidence_id": {
+              "$ref": "#/$defs/id"
+            },
+            "kind": {
+              "const": "reason"
+            },
+            "record_id": {
+              "$ref": "#/$defs/id"
+            },
+            "episode_id": {
+              "$ref": "#/$defs/id"
+            },
+            "symbol": {
+              "$ref": "#/$defs/symbol"
+            },
+            "values": {
+              "$ref": "#/$defs/reason_values"
+            },
+            "source_name": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_locator": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_excerpt": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "time_class": {
+              "enum": [
+                "prior",
+                "post",
+                "unknown"
+              ]
+            },
+            "availability_basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "available_date": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/date"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "available_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "time_precision": {
+              "enum": [
+                "datetime",
+                "date",
+                "unknown"
+              ]
+            },
+            "fetched_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_constructed": {
+              "type": "boolean"
+            },
+            "excluded": {
+              "type": "boolean"
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "minItems": 0,
+              "maxItems": 20
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "evidence_id",
+            "kind",
+            "record_id",
+            "episode_id",
+            "symbol",
+            "values",
+            "source_name",
+            "source_locator",
+            "source_excerpt",
+            "time_class",
+            "availability_basis",
+            "available_date",
+            "available_at",
+            "time_precision",
+            "fetched_at",
+            "is_constructed",
+            "excluded",
+            "limitations"
+          ],
+          "properties": {
+            "evidence_id": {
+              "$ref": "#/$defs/id"
+            },
+            "kind": {
+              "const": "market_bar"
+            },
+            "record_id": {
+              "$ref": "#/$defs/id"
+            },
+            "episode_id": {
+              "$ref": "#/$defs/id"
+            },
+            "symbol": {
+              "$ref": "#/$defs/symbol"
+            },
+            "values": {
+              "$ref": "#/$defs/market_bar_values"
+            },
+            "source_name": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_locator": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_excerpt": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "time_class": {
+              "enum": [
+                "prior",
+                "post",
+                "unknown"
+              ]
+            },
+            "availability_basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "available_date": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/date"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "available_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "time_precision": {
+              "enum": [
+                "datetime",
+                "date",
+                "unknown"
+              ]
+            },
+            "fetched_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_constructed": {
+              "type": "boolean"
+            },
+            "excluded": {
+              "type": "boolean"
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "minItems": 0,
+              "maxItems": 20
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "evidence_id",
+            "kind",
+            "record_id",
+            "episode_id",
+            "symbol",
+            "values",
+            "source_name",
+            "source_locator",
+            "source_excerpt",
+            "time_class",
+            "availability_basis",
+            "available_date",
+            "available_at",
+            "time_precision",
+            "fetched_at",
+            "is_constructed",
+            "excluded",
+            "limitations"
+          ],
+          "properties": {
+            "evidence_id": {
+              "$ref": "#/$defs/id"
+            },
+            "kind": {
+              "const": "event"
+            },
+            "record_id": {
+              "$ref": "#/$defs/id"
+            },
+            "episode_id": {
+              "$ref": "#/$defs/id"
+            },
+            "symbol": {
+              "$ref": "#/$defs/symbol"
+            },
+            "values": {
+              "$ref": "#/$defs/event_values"
+            },
+            "source_name": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_locator": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_excerpt": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "time_class": {
+              "enum": [
+                "prior",
+                "post",
+                "unknown"
+              ]
+            },
+            "availability_basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "available_date": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/date"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "available_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "time_precision": {
+              "enum": [
+                "datetime",
+                "date",
+                "unknown"
+              ]
+            },
+            "fetched_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_constructed": {
+              "type": "boolean"
+            },
+            "excluded": {
+              "type": "boolean"
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "minItems": 0,
+              "maxItems": 20
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "evidence_id",
+            "kind",
+            "record_id",
+            "episode_id",
+            "symbol",
+            "values",
+            "source_name",
+            "source_locator",
+            "source_excerpt",
+            "time_class",
+            "availability_basis",
+            "available_date",
+            "available_at",
+            "time_precision",
+            "fetched_at",
+            "is_constructed",
+            "excluded",
+            "limitations"
+          ],
+          "properties": {
+            "evidence_id": {
+              "$ref": "#/$defs/id"
+            },
+            "kind": {
+              "const": "metric"
+            },
+            "record_id": {
+              "$ref": "#/$defs/id"
+            },
+            "episode_id": {
+              "$ref": "#/$defs/id"
+            },
+            "symbol": {
+              "$ref": "#/$defs/symbol"
+            },
+            "values": {
+              "$ref": "#/$defs/metric"
+            },
+            "source_name": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_locator": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "source_excerpt": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "time_class": {
+              "enum": [
+                "prior",
+                "post",
+                "unknown"
+              ]
+            },
+            "availability_basis": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "available_date": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/date"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "available_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "time_precision": {
+              "enum": [
+                "datetime",
+                "date",
+                "unknown"
+              ]
+            },
+            "fetched_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/datetime"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_constructed": {
+              "type": "boolean"
+            },
+            "excluded": {
+              "type": "boolean"
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "minItems": 0,
+              "maxItems": 20
+            }
+          }
+        }
+      ]
+    },
+    "prior_evidence": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/evidence"
+        },
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "trade",
+                "reason",
+                "event",
+                "market_bar"
+              ]
+            },
+            "time_class": {
+              "const": "prior"
+            },
+            "excluded": {
+              "const": false
+            }
+          }
+        }
+      ]
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "field_path",
+        "usage"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/id"
+        },
+        "field_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "^/(?:[^~]|~[01])*$"
+        },
+        "usage": {
+          "enum": [
+            "prior_basis",
+            "execution_fact",
+            "subsequent_change",
+            "recollection",
+            "limitation"
+          ]
+        }
+      }
+    },
+    "prior_citation": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/citation"
+        },
+        {
+          "properties": {
+            "usage": {
+              "enum": [
+                "prior_basis",
+                "limitation"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "prior_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "statement",
+        "finding_type",
+        "evidence_refs",
+        "qualification"
+      ],
+      "properties": {
+        "finding_id": {
+          "$ref": "#/$defs/id"
+        },
+        "statement": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "finding_type": {
+          "enum": [
+            "supported_observation",
+            "hypothesis",
+            "uncertainty"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prior_citation"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "qualification": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "finding_type": {
+                "enum": [
+                  "supported_observation",
+                  "hypothesis"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_refs": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "review_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "statement",
+        "decision_trade_id",
+        "evidence_refs",
+        "metric_ids",
+        "qualification",
+        "alternative_explanations"
+      ],
+      "properties": {
+        "finding_id": {
+          "$ref": "#/$defs/id"
+        },
+        "statement": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "decision_trade_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/citation"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "metric_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "qualification": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "alternative_explanations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        }
+      }
+    },
+    "fact_finding": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/review_finding"
+        },
+        {
+          "properties": {
+            "evidence_refs": {
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "hypothesis_finding": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/review_finding"
+        },
+        {
+          "properties": {
+            "evidence_refs": {
+              "minItems": 1
+            },
+            "alternative_explanations": {
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "learning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "learning_id",
+        "question",
+        "why",
+        "required_evidence",
+        "related_finding_ids"
+      ],
+      "properties": {
+        "learning_id": {
+          "$ref": "#/$defs/id"
+        },
+        "question": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "why": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "required_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "related_finding_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 1,
+          "maxItems": 20
+        }
+      }
+    },
+    "A_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "stage",
+        "package_id",
+        "episode_id",
+        "episode_revision",
+        "input_hash",
+        "decision_trade_id",
+        "symbol",
+        "action",
+        "cutoff_at",
+        "cutoff_basis",
+        "evidence",
+        "limitations",
+        "instructions"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "stage": {
+          "const": "prior_assessment"
+        },
+        "package_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "input_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "decision_trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "action": {
+          "enum": [
+            "BUY",
+            "SELL"
+          ]
+        },
+        "cutoff_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "cutoff_basis": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prior_evidence"
+          },
+          "minItems": 0,
+          "maxItems": 12000
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        }
+      }
+    },
+    "A_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "stage",
+        "package_id",
+        "episode_id",
+        "episode_revision",
+        "input_hash",
+        "decision_trade_id",
+        "decision_assessment",
+        "process_findings",
+        "missing_information",
+        "questions_to_verify",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "stage": {
+          "const": "prior_assessment"
+        },
+        "package_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "input_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "decision_trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "decision_assessment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "core_judgment",
+            "evidence_support",
+            "untested_assumptions"
+          ],
+          "properties": {
+            "core_judgment": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "evidence_support": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/prior_finding"
+              },
+              "minItems": 0,
+              "maxItems": 20
+            },
+            "untested_assumptions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/prior_finding"
+              },
+              "minItems": 0,
+              "maxItems": 20
+            }
+          }
+        },
+        "process_findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prior_finding"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "missing_information": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "information",
+              "impact"
+            ],
+            "properties": {
+              "information": {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              },
+              "impact": {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              }
+            }
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "questions_to_verify": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        }
+      }
+    },
+    "visibility_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time_class",
+        "availability_basis"
+      ],
+      "properties": {
+        "time_class": {
+          "enum": [
+            "prior",
+            "post",
+            "unknown"
+          ]
+        },
+        "availability_basis": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        }
+      }
+    },
+    "visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cutoff_at",
+        "cutoff_basis",
+        "evidence"
+      ],
+      "properties": {
+        "cutoff_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "cutoff_basis": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/visibility_entry"
+          }
+        }
+      }
+    },
+    "B_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "stage",
+        "package_id",
+        "episode_id",
+        "episode_revision",
+        "input_hash",
+        "decision_trade_id",
+        "symbol",
+        "cutoff_at",
+        "cutoff_basis",
+        "prior_assessment",
+        "prior_package_id",
+        "prior_input_hash",
+        "prior_evidence",
+        "trades",
+        "computed_metrics",
+        "reasons",
+        "evidence",
+        "decision_visibility",
+        "data_quality",
+        "instructions"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "stage": {
+          "const": "outcome_review"
+        },
+        "package_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "input_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "decision_trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "symbol": {
+          "$ref": "#/$defs/symbol"
+        },
+        "cutoff_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "cutoff_basis": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "prior_assessment": {
+          "$ref": "#/$defs/A_output"
+        },
+        "prior_package_id": {
+          "$ref": "#/$defs/id"
+        },
+        "prior_input_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "prior_evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prior_evidence"
+          },
+          "minItems": 0,
+          "maxItems": 12000
+        },
+        "trades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/trade"
+          },
+          "minItems": 1,
+          "maxItems": 5000
+        },
+        "computed_metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/metric"
+          },
+          "minItems": 0,
+          "maxItems": 5
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reason"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 0,
+          "maxItems": 12005
+        },
+        "decision_visibility": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/visibility"
+          }
+        },
+        "data_quality": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 20
+        }
+      }
+    },
+    "B_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "stage",
+        "package_id",
+        "episode_id",
+        "episode_revision",
+        "input_hash",
+        "decision_trade_id",
+        "summary",
+        "fact_findings",
+        "explanation_hypotheses",
+        "behavior_hypotheses",
+        "uncertainties",
+        "learning_items"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "stage": {
+          "const": "outcome_review"
+        },
+        "package_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_id": {
+          "$ref": "#/$defs/id"
+        },
+        "episode_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "input_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "decision_trade_id": {
+          "$ref": "#/$defs/id"
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "fact_findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fact_finding"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "explanation_hypotheses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hypothesis_finding"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "behavior_hypotheses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hypothesis_finding"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "uncertainties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/review_finding"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        },
+        "learning_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/learning"
+          },
+          "minItems": 0,
+          "maxItems": 10
+        }
+      }
+    }
+  }
+}

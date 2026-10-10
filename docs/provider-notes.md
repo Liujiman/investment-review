@@ -376,7 +376,7 @@ npm.cmd run check:data
 - 真实行情：unavailable，尚未验证成功。
 - 现有调用记录：两次网络失败，原始脱敏记录保留。
 - 权限状态：未确认；网络失败不能作为权限不足的依据。
-- 构造演示：synthetic，不能标为供应商返回值。
+- 内置构造演示：synthetic，不能标为供应商返回值。用户上传的构造材料保留user_provided/unverified，并另存is_constructed=true，不等于真实快照。
 - 用户事件证据：支持 TXT 上传或粘贴原文，标为 user_provided / unverified。
 - 用户填写的发布时间与历史版本：属于用户声明，不能自动变成已核验事实。
 - 尚未实现：PDF/OCR、网页抓取、行情快照上传。

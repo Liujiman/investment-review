@@ -1,5 +1,6 @@
 import { parse } from "csv-parse/browser/esm/sync";
 import { datasetSchema, decimalUnits, tradeSchema, type DataMode, type Dataset, type Trade } from "../domain/schema";
+import { recognizePositions } from "../domain/positions";
 
 export const HEADERS = ["symbol", "name", "trade_date", "trade_time", "side", "quantity", "price", "fee", "same_day_order"];
 export type ImportIssue = { row: number; field: string; code: string; message: string; suggestion: string };
@@ -54,15 +55,15 @@ export function parseTradesCsv(bytes: Uint8Array, filename: string, mode: DataMo
       side: raw.side.toUpperCase(), quantity: validInteger(raw.quantity) ? Number(raw.quantity) : 0,
       price: raw.price, fee: raw.fee === "" ? null : raw.fee,
       same_day_order: raw.same_day_order === "" ? null : validInteger(raw.same_day_order) ? Number(raw.same_day_order) : 0,
-      order_confirmed: false, data_mode: mode, created_at: preview.imported_at, updated_at: preview.imported_at,
+      order_confirmed: false, data_mode: mode, is_constructed: mode === "constructed", created_at: preview.imported_at, updated_at: preview.imported_at,
       evidence: {
-        evidence_id: `evidence-${recordId}`, source_type: mode === "constructed" ? "synthetic" : "user_provided",
+        evidence_id: `evidence-${recordId}`, source_type: "user_provided",
         source_name: mode === "constructed" ? "构造 CSV（仅用于演示）" : "用户导入 CSV（真实性未自动验证）",
         source_reference: `${filename}:row=${row}`, source_fields: Object.fromEntries(HEADERS.map((field) => [field, `CSV第${row}行/${field}`])),
         units: { quantity: "股", price: "元/股", fee: "元" }, timezone: "Asia/Shanghai",
         first_available: { date: null, at: null, precision: "unknown", basis: "CSV 未提供原记录首次可得时间；成交时间和当前导入时间不作为其证明" },
-        fetched_at: null, quality: { status: mode === "constructed" ? "synthetic" : raw.fee === "" ? "missing" : "unverified",
-          notes: [mode === "constructed" ? "synthetic：不对应真实交易" : "用户输入不是真实性证明", ...(raw.fee === "" ? ["费用未知，不补零或推算费用"] : [])] },
+        fetched_at: null, quality: { status: "unverified",
+          notes: [mode === "constructed" ? "用户提供的构造材料：不对应真实公司或交易，未验证" : "用户输入不是真实性证明", ...(raw.fee === "" ? ["费用未知，不补零或推算费用"] : [])] },
       },
     };
     const parsed = tradeSchema.safeParse(candidate);
@@ -116,6 +117,8 @@ export function adoptPreview(preview: Preview, excludedRows: number[], duplicate
     return { ...trade, order_confirmed: true, same_day_order: group ? group.rows.indexOf(trade.source_row) + 1 : trade.same_day_order };
   });
   if (!trades.length) throw new Error("排除后没有可导入的交易。");
+  const positions = recognizePositions(trades);
+  if (positions.issues.length) throw new Error(positions.issues.map((issue) => `${issue.symbol} 第${issue.row}行 ${issue.code}：${issue.message}`).join("；"));
   // This stage explicitly replaces the current dataset; it never silently merges episodes.
   return datasetSchema.parse({ schema_version: "1.0", dataset_version: "fields-import-v1", case_id: `import-${preview.batch_id}`,
     label: preview.filename, data_mode: preview.mode, created_at: preview.imported_at, updated_at: preview.imported_at,

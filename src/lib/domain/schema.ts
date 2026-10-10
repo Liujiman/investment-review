@@ -46,12 +46,15 @@ export const evidenceSchema = z.strictObject({
 
 const common = {
   evidence: evidenceSchema, data_mode: modeSchema,
+  is_constructed: z.boolean().optional(),
   created_at: datetimeSchema, updated_at: datetimeSchema,
 };
-function modeMatches(value: { symbol: string; data_mode: "real" | "constructed"; evidence: z.infer<typeof evidenceSchema> }, ctx: z.RefinementCtx) {
+function modeMatches(value: { symbol: string; data_mode: "real" | "constructed"; is_constructed?: boolean; evidence: z.infer<typeof evidenceSchema> }, ctx: z.RefinementCtx) {
+  const constructedSource = value.evidence.source_type === "synthetic" ||
+    (value.is_constructed === true && value.evidence.source_type === "user_provided" && value.evidence.quality.status === "unverified");
   if ((value.data_mode === "constructed") !== (value.symbol === "DEMO001") ||
-      (value.data_mode === "constructed") !== (value.evidence.source_type === "synthetic")) {
-    ctx.addIssue({ code: "custom", path: ["data_mode"], message: "构造数据只允许 DEMO001 和 synthetic 来源，不能与真实模式混用" });
+      (value.data_mode === "constructed" ? !constructedSource || value.is_constructed === false : value.evidence.source_type === "synthetic" || value.is_constructed === true)) {
+    ctx.addIssue({ code: "custom", path: ["data_mode"], message: "构造数据只允许 DEMO001；用户上传须明确构造且为 user_provided/unverified，不能与真实或供应商数据混用" });
   }
 }
 

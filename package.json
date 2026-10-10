@@ -8,11 +8,13 @@
     "start": "next start",
     "check:data": "node scripts/check-data.mjs",
     "test:data-check": "node --test scripts/check-data.test.mjs",
-    "test:domain": "tsx --test tests/domain.test.ts",
+    "test:domain": "tsx --test tests/domain.test.ts tests/analysis.test.ts",
+    "test:review": "tsx --test tests/review.test.ts",
     "test:browser": "playwright test",
     "fixtures:demo": "node scripts/generate-demo.mjs",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "eslint . --max-warnings=0",
+    "test:learning": "tsx --test tests/learning.test.ts"
   },
   "dependencies": {
     "csv-parse": "^7.0.3",

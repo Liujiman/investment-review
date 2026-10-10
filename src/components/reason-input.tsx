@@ -60,7 +60,7 @@ export default function ReasonInput({ dataset, disabled, onSave }: {
           {draft.time_precision === "datetime" && <label className="block text-sm">原理由形成时刻（上海）<input className={field} type="time" step="1" required value={draft.formed_time} onChange={(event) => update("formed_time", event.target.value)} /></label>}
         </div>
         <label className="flex gap-2 text-sm"><input type="checkbox" checked={draft.historical_version_confirmed} onChange={(event) => update("historical_version_confirmed", event.target.checked)} />我已核对摘录对应的原始历史版本（用户确认，不是自动认证）</label>
-        <p className="text-xs leading-5 text-slate-500">形成时间来自你填写的原记录；当前录入时间仅用于管理。事后回忆的形成时间不能反推为当时记录。时间分类与冲突检测待计算。</p>
+        <p className="text-xs leading-5 text-slate-500">形成时间来自你填写的原记录；当前录入时间仅用于管理。事后回忆不能改作已证明的当时记录。时间线按选定决策分类，历史版本与来源冲突未独立核验。</p>
         <button type="submit" className="rounded-lg bg-teal-800 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-200 disabled:text-slate-500">保存新增理由</button>
       </fieldset>
       {error && <p role="alert" className="whitespace-pre-wrap rounded-lg bg-red-50 p-3 text-sm text-red-900">{error}</p>}

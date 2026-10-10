@@ -1,6 +1,43 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { configuration, inspectResponse, query, redact, requestOnce, shanghaiDate, updateNotes } from "./check-data.mjs";
+import { failures, runFailureMock } from "../tests/fixtures/data-failures.mjs";
+
+for (const scenario of failures) {
+  test(`failure mock: ${scenario.label}; exact reason, one attempt, no success or fabricated response`, async () => {
+    const result = await runFailureMock(scenario.id);
+    assert.equal(result.calls, 1);
+    assert.equal(result.check.result, scenario.expected);
+    assert.equal(result.check.http_status, scenario.http);
+    assert.equal(result.check.business_code, scenario.business);
+    assert.notEqual(result.check.result, "SUCCESS");
+    assert.equal(JSON.stringify(result).includes("mock-only-placeholder"), false);
+    if (scenario.http === null) {
+      assert.equal(result.responseText, null); assert.equal(result.check.item_count, null);
+      assert.notEqual(result.check.result, "DATA_SOURCE_PERMISSION_DENIED");
+    }
+    if (scenario.id === "empty") {
+      assert.equal(result.check.item_count, 0); assert.equal(result.check.coverage_start_date, null);
+      assert.deepEqual(JSON.parse(result.responseText).data.item, []);
+    }
+    if (scenario.id === "missing") {
+      assert.equal("close_price" in JSON.parse(result.responseText).data.item[0], false);
+      assert.ok(result.check.validation_errors.length);
+    }
+    if (scenario.id === "conflict") {
+      assert.match(result.check.validation_errors.join(";"), /同标的、同日期、同请求口径.*冲突/);
+      assert.equal(JSON.parse(result.responseText).data.item.length, 2);
+    }
+  });
+}
+
+test("HTTP failures take priority over inconsistent business codes; matching duplicate is not a value conflict", () => {
+  assert.equal(inspect({ ...envelope(), code: 4001 }, 401).result, "DATA_SOURCE_AUTH_FAILED");
+  assert.equal(inspect({ ...envelope(), code: 2001 }, 403).result, "DATA_SOURCE_PERMISSION_DENIED");
+  assert.equal(inspect({ ...envelope(), code: 2003 }, 429).result, "DATA_SOURCE_RATE_LIMITED");
+  const body = envelope(); body.data.item.push({ ...body.data.item[0] });
+  assert.equal(inspect(body).result, "DATA_SOURCE_SCHEMA_INVALID");
+});
 
 // Synthetic unit-test inputs only. Never persisted as real provider responses.
 const envelope = () => ({ code: 0, message: "synthetic test", request_id: "test-only-id", data: {

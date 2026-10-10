@@ -7,6 +7,9 @@ import { adoptPreview, HEADERS, parseTradesCsv } from "../src/lib/import/csv";
 import { decodeDataset, saveDataset, STORAGE_KEY } from "../src/lib/storage/dataset-store";
 import { appendReason, type ReasonInput } from "../src/lib/domain/reasons";
 import { unifiedEvidence } from "../src/lib/domain/timeline";
+import { appendEvent, decodeEvidenceText, type EventInput } from "../src/lib/domain/events";
+import { classifyEvidence } from "../src/lib/domain/visibility";
+import { calculateCash, recognizePositions } from "../src/lib/domain/positions";
 
 const now = "2026-10-10T00:00:00+08:00";
 const bytes = (text: string) => new TextEncoder().encode(text);
@@ -142,7 +145,7 @@ test("reason input appends original fields without fabricating historical timest
   const saved = next.reasons[2];
   assert.equal(saved.source_excerpt, "用户原始摘录"); assert.equal(saved.formed_at, null); assert.equal(saved.formed_date, null);
   assert.equal(saved.evidence.first_available.precision, "unknown"); assert.equal(saved.evidence.fetched_at, null);
-  assert.equal(saved.evidence.source_type, "synthetic"); assert.equal(saved.created_at, now);
+  assert.equal(saved.evidence.source_type, "user_provided"); assert.equal(saved.is_constructed, true); assert.equal(saved.created_at, now);
   assert.equal(saved.record_type, "recollection"); assert.equal(next.active_reason_id, "user-reason-id");
   assert.deepEqual(decodeDataset(JSON.stringify(next)), next);
 });
@@ -172,4 +175,87 @@ test("unified timeline projects every original record once and all classificatio
   assert.deepEqual(bar.record, original.market_bars[1]);
   const unknown = appendReason(original, reasonInput(original.trades[0].trade_id), now, "unknown-reason");
   assert.equal(unifiedEvidence(unknown).at(-1)!.date, null);
+});
+
+const eventInput = (symbol: string): EventInput => ({ symbol, title: "用户提供的测试资料", excerpt: "  用户上传原文\n保留换行  ", source_name: "用户持有的测试文本", source_url: "", published_date: "", published_time: "", time_precision: "unknown", historical_version_confirmed: false, filename: "evidence.txt" });
+
+test("uploaded evidence preserves text and source, never becomes provider API and does not fabricate first availability", () => {
+  const real = adoptPreview(parse(`${header}\n${row.replace("DEMO001", "600519.SH")}`, "real"), [], [], []);
+  const next = appendEvent(real, eventInput("600519.SH"), now, "user-event");
+  assert.equal(real.events.length, 0); assert.equal(next.events.length, 1);
+  const event = next.events[0];
+  assert.equal(event.evidence.source_type, "user_provided"); assert.equal(event.evidence.quality.status, "unverified");
+  assert.equal(event.excerpt, eventInput("600519.SH").excerpt); assert.equal(event.evidence.fetched_at, null);
+  assert.equal(event.published_date, null); assert.equal(event.published_at, null); assert.equal(event.evidence.first_available.precision, "unknown");
+  assert.match(event.evidence.source_reference, /evidence\.txt/);
+  assert.equal(classifyEvidence(next, next.trades[0].trade_id).find((entry) => entry.id === event.evidence.evidence_id)!.time_class, "unknown");
+  assert.deepEqual(decodeDataset(JSON.stringify(next)), next);
+});
+
+test("user-uploaded constructed evidence stays unverified; date-only and unverified old versions retain conservative classification", () => {
+  const demo = loadDemo(); const input = { ...eventInput("DEMO001"), time_precision: "date" as const, published_date: "2025-03-03", historical_version_confirmed: true };
+  const next = appendEvent(demo, input, now, "synthetic-event"), event = next.events.at(-1)!;
+  assert.equal(event.evidence.source_type, "user_provided"); assert.equal(event.evidence.quality.status, "unverified"); assert.equal(event.is_constructed, true);
+  assert.equal(event.published_at, null); assert.equal(event.evidence.first_available.at, null);
+  assert.equal(classifyEvidence(next, demo.trades[0].trade_id).find((entry) => entry.id === event.evidence.evidence_id)!.time_class, "unknown");
+  const old = appendEvent(demo, { ...input, published_date: "2025-02-28", historical_version_confirmed: false }, now, "unconfirmed-event");
+  assert.equal(classifyEvidence(old, demo.trades[0].trade_id).find((entry) => entry.id === "evidence-unconfirmed-event")!.time_class, "unknown");
+  assert.throws(() => appendEvent(demo, { ...input, symbol: "600519.SH" }));
+  assert.throws(() => appendEvent(demo, { ...input, source_url: "javascript:alert(1)" }));
+  assert.throws(() => appendEvent(demo, { ...input, excerpt: " " }));
+});
+
+test("TXT upload checks UTF-8, type, size and excerpt limit without silent truncation", () => {
+  assert.equal(decodeEvidenceText(bytes("\uFEFF原文\n第二行"), "source.TXT"), "原文\n第二行");
+  assert.throws(() => decodeEvidenceText(bytes("原文"), "source.pdf"));
+  assert.throws(() => decodeEvidenceText(new Uint8Array([255]), "source.txt"));
+  assert.throws(() => decodeEvidenceText(new Uint8Array(64 * 1024 + 1), "source.txt"));
+  assert.throws(() => decodeEvidenceText(bytes("x".repeat(2001)), "source.txt"));
+  assert.throws(() => decodeEvidenceText(bytes(" \n "), "source.txt"));
+});
+
+test("manual acceptance CSV files retain constructed user provenance and known versus missing cash fees", () => {
+  for (const [filename, missing] of [["trades-closed.csv", false], ["trades-missing-fee.csv", true]] as const) {
+    const preview = parse(readFileSync(`docs/acceptance-fixtures/${filename}`, "utf8"), "constructed", filename);
+    assert.deepEqual(preview.errors, []); assert.equal(preview.warnings.length, missing ? 2 : 0);
+    const dataset = adoptPreview(preview, [], [], []);
+    assert.deepEqual(dataset.trades.map((trade) => trade.trade_at), ["2025-03-10T10:00:00+08:00", "2025-03-12T14:00:00+08:00"]);
+    for (const trade of dataset.trades) {
+      assert.equal(trade.is_constructed, true); assert.equal(trade.evidence.source_type, "user_provided");
+      assert.equal(trade.evidence.quality.status, "unverified"); assert.match(trade.name, /构造验收材料/);
+      assert.equal(trade.fee, missing ? null : "5");
+    }
+    const positions = recognizePositions(dataset.trades); assert.deepEqual(positions.issues, []);
+    assert.equal(positions.processes.length, 1); assert.equal(positions.processes[0].status, "closed");
+    assert.equal(positions.processes[0].quantity, 0n);
+    const cash = calculateCash(positions.processes[0]);
+    assert.equal(cash.buy_cents, 100000n); assert.equal(cash.sell_cents, 90000n);
+    assert.equal(cash.gross_pnl_cents, -10000n); assert.equal(cash.net_pnl_cents, missing ? null : -11000n);
+    assert.equal(cash.total_fee_cents, missing ? null : 1000n); assert.equal(cash.missing_fee_count, missing ? 2 : 0);
+    assert.equal(cash.status, "provisional"); assert.deepEqual(decodeDataset(JSON.stringify(dataset)), dataset);
+  }
+});
+
+test("manual acceptance TXT files classify 1/3/1 without converting date-only, entry time or version claims into verified facts", () => {
+  let dataset = adoptPreview(parse(readFileSync("docs/acceptance-fixtures/trades-closed.csv", "utf8")), [], [], []);
+  for (const [filename, precision, time] of [["event-before.txt", "datetime", "09:30:00"], ["event-after.txt", "datetime", "18:00:00"], ["event-date-only.txt", "date", ""]] as const) {
+    const excerpt = decodeEvidenceText(readFileSync(`docs/acceptance-fixtures/${filename}`), filename);
+    assert.match(excerpt, /构造验收材料/); assert.match(excerpt, /user_provided \/ unverified/);
+    dataset = appendEvent(dataset, { ...eventInput("DEMO001"), title: filename, excerpt,
+      published_date: "2025-03-10", published_time: time, time_precision: precision, historical_version_confirmed: true, filename }, now, filename);
+  }
+  const classes = classifyEvidence(dataset, dataset.trades[0].trade_id);
+  assert.deepEqual(["prior", "post", "unknown"].map((kind) => classes.filter((entry) => entry.time_class === kind).length), [1, 3, 1]);
+  for (const event of dataset.events) {
+    assert.equal(event.is_constructed, true); assert.equal(event.evidence.source_type, "user_provided");
+    assert.equal(event.evidence.quality.status, "unverified"); assert.equal(event.evidence.fetched_at, null);
+    assert.equal(event.created_at, now);
+    assert.equal(eventSchema.safeParse({ ...event, evidence: { ...event.evidence, quality: { ...event.evidence.quality, status: "verified" } } }).success, false);
+    assert.equal(eventSchema.safeParse({ ...event, evidence: { ...event.evidence, source_type: "provider_api" } }).success, false);
+    assert.equal(eventSchema.safeParse({ ...event, is_constructed: false }).success, false);
+  }
+  assert.equal(dataset.events[2].published_at, null); assert.equal(dataset.events[2].evidence.first_available.at, null);
+  const unconfirmed = { ...dataset, events: dataset.events.map((event) => ({ ...event, historical_version_confirmed: false })) };
+  assert.equal(classifyEvidence(unconfirmed, dataset.trades[0].trade_id).filter((entry) => entry.time_class === "prior").length, 0);
+  assert.deepEqual(decodeDataset(JSON.stringify(dataset)), dataset);
 });

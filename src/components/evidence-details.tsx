@@ -1,6 +1,7 @@
 import type { EvidenceRecord } from "@/lib/domain/timeline";
+import { timeLabels, type Classification } from "@/lib/domain/visibility";
 
-export default function EvidenceDetails({ record }: { record: EvidenceRecord }) {
+export default function EvidenceDetails({ record, classification }: { record: EvidenceRecord; classification?: Classification }) {
   const { evidence, ...fields } = record;
   const publicDate = "published_date" in record ? record.published_date : null;
   const publicAt = "published_at" in record ? record.published_at : null;
@@ -9,7 +10,7 @@ export default function EvidenceDetails({ record }: { record: EvidenceRecord }) 
   return <details className="mt-3 min-w-0 text-sm leading-6 text-slate-600">
     <summary className="cursor-pointer font-medium text-teal-800 focus-visible:outline-2 focus-visible:outline-teal-700">查看来源详情</summary>
     <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-white p-4 [overflow-wrap:anywhere]">
-      <p className="font-medium">{evidence.source_type === "synthetic" ? "synthetic 构造数据：不对应真实公司、交易或新闻" : "用户提供 / 供应商记录，来源标签不等于真实性证明"}</p>
+      <p className="font-medium">{evidence.source_type === "synthetic" ? "synthetic 构造数据：不对应真实公司、交易或新闻" : record.is_constructed ? "用户提供的构造材料：不对应真实公司、交易或公告；未验证" : "用户提供 / 供应商记录，来源标签不等于真实性证明"}</p>
       <p>证据 ID：{evidence.evidence_id}</p>
       <p>来源类型：{evidence.source_type}；质量：{evidence.quality.status}</p>
       <p>来源：{evidence.source_name}；位置：{evidence.source_reference}</p>
@@ -18,7 +19,7 @@ export default function EvidenceDetails({ record }: { record: EvidenceRecord }) 
       <p>首次可得时间：{evidence.first_available.at ?? (evidence.first_available.date ? `${evidence.first_available.date}（仅日期，没有小时）` : "未知，未提供")}；精度：{evidence.first_available.precision}</p>
       <p>时间依据：{evidence.first_available.basis}</p>
       <p>取数时间：{evidence.fetched_at ?? "未取数（本地输入/导入不冒充供应商取数）"}；时区：{evidence.timezone}</p>
-      <p>时间分类：待计算；尚未判断事前可知、事后信息或时间未知。</p>
+      <p>{classification ? `时间分类：${timeLabels[classification.time_class]}；${classification.explanation}` : "时间分类请在时间线选定决策交易后查看；分类随决策时点变化。"}</p>
       <p>质量说明：{evidence.quality.notes.join("；") || "未提供"}</p>
       <h4 className="font-medium text-slate-900">原始摘录</h4>
       <p className="whitespace-pre-wrap">{excerpt || "未提供原文摘录；以下保留已采用字段，不自动补写文本。"}</p>

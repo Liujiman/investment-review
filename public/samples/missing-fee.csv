@@ -1,0 +1,3 @@
+symbol,name,trade_date,trade_time,side,quantity,price,fee,same_day_order
+DEMO001,构造示例公司,2025-03-03,10:00:00,BUY,100,10,,1
+DEMO001,构造示例公司,2025-03-10,14:00:00,SELL,100,9,5,1
